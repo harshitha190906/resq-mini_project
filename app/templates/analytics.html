@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}Network Performance Analytics — ResQNet NOC{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.6rem; color: #ffffff; display: flex; align-items: center; gap: 0.6rem; margin: 0; font-family: var(--font-heading, sans-serif);">
+      <span class="fas fa-chart-line" style="color: var(--accent-cyan, #00f2fe);"></span>
+      Network Performance Analytics &amp; QoS Evaluation
+    </h1>
+    <p style="color: var(--text-muted, #94a3b8); font-size: 0.85rem; margin-top: 0.25rem;">
+      Quantitative disaster network telemetry: load curves, queuing latency, traffic shaping effectiveness, and automated CSV export.
+    </p>
+  </div>
+  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+    <button id="btn-refresh-analytics" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
+      <i class="fas fa-sync-alt"></i> Refresh Telemetry
+    </button>
+    <a href="{{ url_for('main.analytics_export') }}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 600;">
+      <i class="fas fa-file-csv"></i> Export CSV Report
+    </a>
+  </div>
+</div>
+
+<!-- SECTION 1: Key Performance Indicator (KPI) Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+  <!-- Card 1: Total Sent -->
+  <div class="card glass-panel" style="padding: 0.9rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Total Packets Sent</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="kpi-sent" style="font-size: 1.45rem; color: #ffffff; font-family: 'JetBrains Mono', monospace;">0</strong>
+      <span style="font-size: 0.75rem; color: #94a3b8;">pkts</span>
+    </div>
+  </div>
+
+  <!-- Card 2: Delivered -->
+  <div class="card glass-panel" style="padding: 0.9rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Delivered Packets</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="kpi-delivered" style="font-size: 1.45rem; color: #34d399; font-family: 'JetBrains Mono', monospace;">0</strong>
+      <span style="font-size: 0.75rem; color: #94a3b8;">pkts</span>
+    </div>
+  </div>
+
+  <!-- Card 3: Lost -->
+  <div class="card glass-panel" style="padding: 0.9rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Lost / Dropped</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="kpi-lost" style="font-size: 1.45rem; color: #f87171; font-family: 'JetBrains Mono', monospace;">0</strong>
+      <span style="font-size: 0.75rem; color: #94a3b8;">pkts</span>
+    </div>
+  </div>
+
+  <!-- Card 4: Delivery Ratio -->
+  <div class="card glass-panel" style="padding: 0.9rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Delivery Ratio</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="kpi-del-ratio" style="font-size: 1.45rem; color: #34d399; font-family: 'JetBrains Mono', monospace;">0.0%</strong>
+      <span style="font-size: 0.75rem; color: #94a3b8;">PDR</span>
+    </div>
+  </div>
+
+  <!-- Card 5: Loss Ratio -->
+  <div class="card glass-panel" style="padding: 0.9rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Packet Loss Ratio</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="kpi-loss-ratio" style="font-size: 1.45rem; color: #f87171; font-family: 'JetBrains Mono', monospace;">0.0%</strong>
+      <span style="font-size: 0.75rem; color: #94a3b8;">PLR</span>
+    </div>
+  </div>
+
+  <!-- Card 6: Average Delay -->
+  <div class="card glass-panel" style="padding: 0.9rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Average Delay</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="kpi-delay" style="font-size: 1.45rem; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">0.0</strong>
+      <span style="font-size: 0.75rem; color: #94a3b8;">ms</span>
+    </div>
+  </div>
+
+  <!-- Card 7: Throughput -->
+  <div class="card glass-panel" style="padding: 0.9rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Throughput</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="kpi-throughput" style="font-size: 1.45rem; color: #00f2fe; font-family: 'JetBrains Mono', monospace;">0.0</strong>
+      <span style="font-size: 0.75rem; color: #94a3b8;">kbps</span>
+    </div>
+  </div>
+
+  <!-- Card 8: Network Efficiency -->
+  <div class="card glass-panel" style="padding: 0.9rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Network Efficiency</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="kpi-efficiency" style="font-size: 1.45rem; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">0.0%</strong>
+      <span style="font-size: 0.75rem; color: #94a3b8;">yield</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: 6 Interactive Chart.js Curves -->
+<div class="glass-panel" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+  <div class="panel-header" style="margin-bottom: 1rem;">
+    <h2 style="font-size: 1.05rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+      <span class="fas fa-chart-area" style="color: var(--accent-cyan, #00f2fe);"></span>
+      Interactive Quality-of-Service (QoS) Charts
+    </h2>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.25rem;">
+    <!-- Chart 1: Packet Delivery vs Simulation Time -->
+    <div class="card glass-panel" style="padding: 1rem;">
+      <h3 style="font-size: 0.88rem; color: #ffffff; margin-bottom: 0.6rem; display: flex; justify-content: space-between;">
+        <span><i class="fas fa-check-circle" style="color: #34d399;"></i> 1. Packet Delivery vs Simulation Time</span>
+        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">Cumulative packets delivered</span>
+      </h3>
+      <div style="height: 200px; width: 100%; position: relative;">
+        <canvas id="chartDeliveryTime"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 2: Packet Loss vs Simulation Time -->
+    <div class="card glass-panel" style="padding: 1rem;">
+      <h3 style="font-size: 0.88rem; color: #ffffff; margin-bottom: 0.6rem; display: flex; justify-content: space-between;">
+        <span><i class="fas fa-times-circle" style="color: #f87171;"></i> 2. Packet Loss vs Simulation Time</span>
+        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">Dropped packet progression</span>
+      </h3>
+      <div style="height: 200px; width: 100%; position: relative;">
+        <canvas id="chartLossTime"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 3: Average Delay vs Traffic Load -->
+    <div class="card glass-panel" style="padding: 1rem;">
+      <h3 style="font-size: 0.88rem; color: #ffffff; margin-bottom: 0.6rem; display: flex; justify-content: space-between;">
+        <span><i class="fas fa-stopwatch" style="color: #fbbf24;"></i> 3. Average Delay vs Traffic Load</span>
+        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">10 to 100 pkts/s intensity</span>
+      </h3>
+      <div style="height: 200px; width: 100%; position: relative;">
+        <canvas id="chartDelayLoad"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 4: Throughput vs Traffic Load -->
+    <div class="card glass-panel" style="padding: 1rem;">
+      <h3 style="font-size: 0.88rem; color: #ffffff; margin-bottom: 0.6rem; display: flex; justify-content: space-between;">
+        <span><i class="fas fa-tachometer-alt" style="color: #00f2fe;"></i> 4. Throughput vs Traffic Load</span>
+        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">Delivered bandwidth (kbps)</span>
+      </h3>
+      <div style="height: 200px; width: 100%; position: relative;">
+        <canvas id="chartThroughputLoad"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 5: Raw Traffic vs Leaky Bucket Shaped Traffic -->
+    <div class="card glass-panel" style="padding: 1rem;">
+      <h3 style="font-size: 0.88rem; color: #ffffff; margin-bottom: 0.6rem; display: flex; justify-content: space-between;">
+        <span><i class="fas fa-filter" style="color: #38bdf8;"></i> 5. Raw Traffic vs Shaped Traffic</span>
+        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">Burst damping evaluation</span>
+      </h3>
+      <div style="height: 200px; width: 100%; position: relative;">
+        <canvas id="chartShapedTraffic"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 6: Retransmission Analysis -->
+    <div class="card glass-panel" style="padding: 1rem;">
+      <h3 style="font-size: 0.88rem; color: #ffffff; margin-bottom: 0.6rem; display: flex; justify-content: space-between;">
+        <span><i class="fas fa-redo-alt" style="color: #fb923c;"></i> 6. Retransmission &amp; Overhead</span>
+        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">Uncontrolled vs Controlled</span>
+      </h3>
+      <div style="height: 200px; width: 100%; position: relative;">
+        <canvas id="chartRetransmissions"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: Traffic Load Comparison Table -->
+<div class="glass-panel" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+  <div class="panel-header" style="margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2 style="font-size: 1.05rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <span class="fas fa-balance-scale" style="color: var(--accent-cyan, #00f2fe);"></span>
+        Traffic Load Comparison: Uncontrolled vs Leaky Bucket Controlled
+      </h2>
+      <p style="font-size: 0.78rem; color: #94a3b8; margin-top: 0.2rem;">
+        Empirical evaluation across disaster traffic injection rates: 10, 20, 40, 60, 80, 100 pkts/s.
+      </p>
+    </div>
+  </div>
+
+  <div style="background: #060913; border: 1px solid rgba(64,93,148,0.35); border-radius: 8px; overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: #cbd5e1;">
+      <thead>
+        <tr style="background: rgba(15,23,42,0.9); border-bottom: 1px solid rgba(64,93,148,0.35); color: #94a3b8; text-align: left;">
+          <th style="padding: 0.6rem 0.75rem;">Load (pkts/s)</th>
+          <th style="padding: 0.6rem 0.75rem; color: #f87171;">Uncontrolled Delivery</th>
+          <th style="padding: 0.6rem 0.75rem; color: #f87171;">Uncontrolled Loss</th>
+          <th style="padding: 0.6rem 0.75rem;">Uncontrolled Delay</th>
+          <th style="padding: 0.6rem 0.75rem;">Uncontrolled Throughput</th>
+          <th style="padding: 0.6rem 0.75rem; color: #34d399;">Controlled Delivery</th>
+          <th style="padding: 0.6rem 0.75rem; color: #34d399;">Controlled Loss</th>
+          <th style="padding: 0.6rem 0.75rem;">Controlled Delay</th>
+          <th style="padding: 0.6rem 0.75rem; color: #00f2fe;">Controlled Throughput</th>
+        </tr>
+      </thead>
+      <tbody id="comparison-table-tbody">
+        <!-- Rendered by analytics.js -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SECTION 4: Network Performance Report & Formulas -->
+<div class="glass-panel" style="padding: 1.25rem;">
+  <div class="panel-header" style="margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2 style="font-size: 1.05rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <span class="fas fa-file-alt" style="color: var(--accent-cyan, #00f2fe);"></span>
+        Executive Network Performance Report
+      </h2>
+    </div>
+    <a href="{{ url_for('main.analytics_export') }}" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+      <i class="fas fa-download"></i> Download CSV
+    </a>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
+    <div style="background: #060913; border: 1px solid rgba(64,93,148,0.35); border-radius: 6px; padding: 1rem;">
+      <h4 style="font-size: 0.85rem; color: #00f2fe; margin-bottom: 0.5rem;">Standard Network Metric Formulas</h4>
+      <p style="margin-bottom: 0.35rem;"><code>Delivery Ratio = (Delivered / Sent) &times; 100</code></p>
+      <p style="margin-bottom: 0.35rem;"><code>Packet Loss Ratio = (Lost / Sent) &times; 100</code></p>
+      <p style="margin-bottom: 0.35rem;"><code>Average Delay = Total Delay / Delivered Packets (ms)</code></p>
+      <p style="margin: 0;"><code>Throughput = Delivered Bits / Duration (kbps)</code></p>
+    </div>
+
+    <div style="background: #060913; border: 1px solid rgba(64,93,148,0.35); border-radius: 6px; padding: 1rem;">
+      <h4 style="font-size: 0.85rem; color: #34d399; margin-bottom: 0.5rem;">Congestion Control Takeaway</h4>
+      <p style="margin: 0;">
+        Under low traffic loads (&le; 20 pkts/s), uncontrolled and Leaky Bucket traffic perform similarly. As disaster flash-crowd bursts exceed 40 pkts/s, uncontrolled links suffer 25–45% packet loss and elevated jitter due to tail-drop queue exhaustion, whereas Leaky Bucket paces egress to ensure zero transit router congestion.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,48 @@
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# ── Virtual environments ────────────────────────────────────────────────────────
+venv/
+env/
+.venv/
+ENV/
+
+# ── Flask / runtime ─────────────────────────────────────────────────────────────
+instance/
+.env
+.flaskenv
+*.sqlite3
+*.db
+
+# ── Testing ──────────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ── IDE / editors ────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.orig
+
+# ── OS ───────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Reports / generated outputs ──────────────────────────────────────────────────
+reports/*.json
+reports/*.csv
+reports/*.html

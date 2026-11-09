@@ -1,0 +1,11 @@
+# ResQNet — Python dependencies
+# Install with:  pip install -r requirements.txt
+
+# --- Web framework ---
+Flask>=3.0.0,<4.0
+
+# --- Testing ---
+pytest>=9.0.0
+
+# --- All algorithms use the Python standard library only ---
+# (heapq, dataclasses, enum, typing, hashlib, base64, json, itertools)

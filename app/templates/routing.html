@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Routing Simulator & Disaster Link Failure - ResQNet{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 1.5rem;">
+  <h1 style="font-size: 1.5rem; color: #fff; display: flex; align-items: center; gap: 0.5rem;">
+    <span class="fas fa-route" style="color: var(--accent-cyan);"></span>
+    Emergency Routing &amp; Disaster Link Failure Simulator
+  </h1>
+  <p style="color: var(--text-muted); font-size: 0.85rem;">
+    Compare optimal Dijkstra shortest path with decentralized Distance-Vector routing. Simulate critical link cuts to observe real-time dynamic rerouting and relaxation.
+  </p>
+</div>
+
+<div class="grid-2col">
+  <!-- Left Column: Visualizer & Routing Telemetry -->
+  <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <!-- Interactive Canvas Graph -->
+    <div class="glass-panel" style="padding: 1rem;">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>⚡</span> Live Disaster Network Topology
+        </div>
+        <div class="panel-actions">
+          <button id="btnResetTopology" class="btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+            <span class="fas fa-undo"></span> Reset All Links
+          </button>
+        </div>
+      </div>
+      <div class="canvas-container" style="height: 480px;">
+        <canvas id="networkCanvas"></canvas>
+        <div class="canvas-overlay-legend">
+          <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div> Control Center (ECC)</div>
+          <div class="legend-item"><div class="legend-color" style="background: #3b82f6;"></div> Police / Fire / Medical</div>
+          <div class="legend-item"><div class="legend-color" style="background: #a855f7;"></div> Microwave Relays</div>
+          <div class="legend-item"><div class="legend-color" style="background: #10b981;"></div> Shelters</div>
+          <div class="legend-item"><div class="legend-color" style="background: #00f2fe;"></div> Active Link</div>
+          <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div> Severed Link</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Route Comparison Section: Dijkstra vs Distance Vector -->
+    <div class="glass-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>📊</span> Route Determination Results
+        </div>
+        <div id="routeMatchBadge" class="status-badge" style="display: none;">
+          <span class="status-dot"></span>
+          <span id="routeMatchText">Matching</span>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="routeLoadingIndicator" style="display: none; padding: 2rem; text-align: center;">
+        <div style="font-size: 1.5rem; color: var(--accent-cyan);"><i class="fas fa-spinner fa-spin"></i></div>
+        <p style="margin-top: 0.75rem; color: var(--text-muted); font-size: 0.85rem;">Calculating optimal routes & running relaxation steps...</p>
+      </div>
+
+      <!-- Unreachable State Alert -->
+      <div id="routeUnreachableAlert" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; color: #f87171; font-weight: 700;">
+          <span class="fas fa-exclamation-triangle" style="font-size: 1.25rem;"></span>
+          <span id="unreachableMessage">No available route between these nodes.</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #fca5a5; margin-top: 0.35rem;">
+          All candidate paths through active links have been severed by disaster failures. Destination is currently unreachable.
+        </p>
+      </div>
+
+      <!-- Initial Instructions (Shown before first calculation) -->
+      <div id="routeInitialInstructions" style="padding: 1.5rem; text-align: center; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px dashed var(--border-color);">
+        <span class="fas fa-route" style="font-size: 2rem; color: var(--accent-cyan); opacity: 0.8; margin-bottom: 0.5rem; display: inline-block;"></span>
+        <h4 style="color: #fff; margin-bottom: 0.3rem;">Select Source and Destination Nodes</h4>
+        <p style="color: var(--text-muted); font-size: 0.82rem;">
+          Choose endpoints on the right panel and click <strong>Calculate Optimal Path (Dijkstra)</strong> to observe shortest-path derivation, latency analysis, and Bellman-Ford Distance Vector convergence.
+        </p>
+      </div>
+
+      <!-- Results Grid (Dijkstra & DV side-by-side) -->
+      <div id="routeResultsContainer" style="display: none;">
+        <div class="comparison-section">
+          <!-- Dijkstra Panel -->
+          <div style="background: rgba(10, 16, 30, 0.8); border: 1px solid rgba(0, 242, 254, 0.3); border-radius: 10px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #00f2fe; text-transform: uppercase; letter-spacing: 0.05em;">
+                <i class="fas fa-bolt"></i> Dijkstra Optimal Path
+              </span>
+              <span id="dijkstraStatusBadge" class="tag-badge" style="background: rgba(0,242,254,0.15); color: #00f2fe;">OPTIMAL</span>
+            </div>
+            
+            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Computed Route:</div>
+            <div id="dijkstraPathDisplay" style="font-family: 'JetBrains Mono'; font-size: 0.9rem; margin-top: 0.35rem; word-break: break-word;">--</div>
+
+            <div class="metric-card-grid">
+              <div class="metric-box">
+                <div class="metric-title">Path Cost</div>
+                <div id="metricDijkstraCost" class="metric-num">--</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-title">Delay (ms)</div>
+                <div id="metricDijkstraDelay" class="metric-num">--</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-title">Hops</div>
+                <div id="metricDijkstraHops" class="metric-num">--</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-title">Bottleneck BW</div>
+                <div id="metricDijkstraBW" class="metric-num">--</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Distance Vector Panel -->
+          <div style="background: rgba(10, 16, 30, 0.8); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 10px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #c084fc; text-transform: uppercase; letter-spacing: 0.05em;">
+                <i class="fas fa-project-diagram"></i> Distance Vector (Bellman-Ford)
+              </span>
+              <span id="dvConvergedBadge" class="tag-badge" style="background: rgba(168,85,247,0.15); color: #c084fc;">CONVERGED</span>
+            </div>
+
+            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Computed Route:</div>
+            <div id="dvPathDisplay" style="font-family: 'JetBrains Mono'; font-size: 0.9rem; margin-top: 0.35rem; color: #e9d5ff; word-break: break-word;">--</div>
+
+            <div class="metric-card-grid">
+              <div class="metric-box">
+                <div class="metric-title">Path Cost</div>
+                <div id="metricDvCost" class="metric-num" style="color: #c084fc;">--</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-title">Delay (ms)</div>
+                <div id="metricDvDelay" class="metric-num" style="color: #c084fc;">--</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-title">Hops</div>
+                <div id="metricDvHops" class="metric-num" style="color: #c084fc;">--</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-title">Bottleneck BW</div>
+                <div id="metricDvBW" class="metric-num" style="color: #c084fc;">--</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Link-by-Link Breakdown Table -->
+        <div style="margin-top: 1.5rem;">
+          <div style="font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem;">
+            Active Route Hop-by-Hop Link Diagnostics:
+          </div>
+          <div class="table-responsive">
+            <table class="custom-table" id="routeLinksTable">
+              <thead>
+                <tr>
+                  <th>Hop #</th>
+                  <th>Link (From → To)</th>
+                  <th>Metric Cost</th>
+                  <th>Latency (Delay)</th>
+                  <th>Bandwidth</th>
+                  <th>Link Status</th>
+                </tr>
+              </thead>
+              <tbody id="routeLinksTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Controls, Link Toggles & Relaxation Log -->
+  <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+    <!-- Route Determination Panel -->
+    <div class="glass-panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>🧭</span> Route Determination</div>
+      </div>
+
+      <div class="control-group">
+        <label for="routeSource" class="control-label">Source Node (Origin):</label>
+        <select id="routeSource" class="select-custom">
+          <!-- Populated dynamically via JS -->
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="routeTarget" class="control-label">Destination Node (Target):</label>
+        <select id="routeTarget" class="select-custom">
+          <!-- Populated dynamically via JS -->
+        </select>
+      </div>
+
+      <button id="btnCalculateRoute" class="btn-primary" style="width: 100%; margin-top: 0.5rem; padding: 0.85rem 1rem; font-size: 0.95rem;">
+        <span class="fas fa-play"></span> Calculate Optimal Path (Dijkstra)
+      </button>
+    </div>
+
+    <!-- Disaster Link Failure Simulator Card -->
+    <div class="glass-panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>💥</span> Disaster Link Failure Simulation</div>
+      </div>
+      <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.9rem; line-height: 1.4;">
+        Simulate severe disaster conditions (severed cables, flooded conduits, collapsed microwave towers). Clicking a link toggles its live operational state across all algorithms:
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+        <button id="btnFailLink1" class="btn-danger" style="display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 0.75rem 1rem;">
+          <div>
+            <div style="font-weight: 700;">💥 Toggle Link: POL ↔ ECC</div>
+            <div style="font-size: 0.72rem; opacity: 0.8;">Primary Command Link (PS-01 ↔ ECC-01)</div>
+          </div>
+          <span id="badgeLink1" class="tag-badge" style="background: rgba(16,185,129,0.2); color: #34d399;">ACTIVE</span>
+        </button>
+
+        <button id="btnFailLink2" class="btn-danger" style="display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 0.75rem 1rem;">
+          <div>
+            <div style="font-weight: 700;">💥 Toggle Link: POL ↔ R1</div>
+            <div style="font-size: 0.72rem; opacity: 0.8;">North Relay Link (PS-01 ↔ RTR-01)</div>
+          </div>
+          <span id="badgeLink2" class="tag-badge" style="background: rgba(16,185,129,0.2); color: #34d399;">ACTIVE</span>
+        </button>
+
+        <button id="btnFailLink3" class="btn-danger" style="display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 0.75rem 1rem;">
+          <div>
+            <div style="font-weight: 700;">💥 Toggle Link: FIRE ↔ R2</div>
+            <div style="font-size: 0.72rem; opacity: 0.8;">East Sector Relay (FS-01 ↔ RTR-02)</div>
+          </div>
+          <span id="badgeLink3" class="tag-badge" style="background: rgba(16,185,129,0.2); color: #34d399;">ACTIVE</span>
+        </button>
+      </div>
+
+      <!-- Small Event History -->
+      <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 0.75rem;">
+        <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 0.4rem;">
+          Disaster Event History:
+        </div>
+        <div id="disasterEventHistory" style="max-height: 120px; overflow-y: auto; font-family: 'JetBrains Mono'; font-size: 0.75rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.3rem;">
+          <div style="color: #64748b;">[System Ready] All primary and secondary links operational.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step Relaxation Log Panel -->
+    <div class="glass-panel" style="flex: 1;">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>🔍</span> Dijkstra Relaxation Log
+        </div>
+        <span id="logStepCount" class="tag-badge" style="background: rgba(0, 242, 254, 0.15); color: #00f2fe;">0 steps</span>
+      </div>
+      <p style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.65rem;">
+        Step-by-step trace generated directly from min-heap execution and edge relaxation:
+      </p>
+      <div id="dijkstraStepList" class="log-terminal" style="max-height: 260px; min-height: 180px;">
+        <div class="log-entry" style="color: #64748b;">
+          <span>Select nodes and run calculation to view real-time relaxation trace.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/routing.js') }}"></script>
+{% endblock %}

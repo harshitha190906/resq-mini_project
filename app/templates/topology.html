@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Network Topology - ResQNet{% endblock %}
+{% block content %}
+<div class="page-header" style="margin-bottom: 1.5rem;">
+  <h1 style="font-size: 1.5rem; color: #fff; display: flex; align-items: center; gap: 0.5rem;">
+    <span class="fas fa-network-wired" style="color: var(--accent-cyan);"></span>
+    Disaster Network Topology &amp; Link State Map
+  </h1>
+  <p style="color: var(--text-muted); font-size: 0.85rem;">
+    Real-time multi-node disaster emergency communication infrastructure. Green links are operational; red links are failed/severed.
+  </p>
+</div>
+
+<div class="grid-2col">
+  <!-- Interactive Canvas Visualizer -->
+  <div class="glass-panel" style="padding: 1rem;">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span>⚡</span> Live Network Graph
+      </div>
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        <span id="topoStatusLabel">Graph Active</span>
+      </div>
+    </div>
+    <div class="canvas-container" style="height: 540px;">
+      <canvas id="networkCanvas"></canvas>
+      <div class="canvas-overlay-legend">
+        <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div> Control Center (ECC)</div>
+        <div class="legend-item"><div class="legend-color" style="background: #3b82f6;"></div> Police / Fire / Medical</div>
+        <div class="legend-item"><div class="legend-color" style="background: #a855f7;"></div> Microwave Relays</div>
+        <div class="legend-item"><div class="legend-color" style="background: #10b981;"></div> Shelters</div>
+        <div class="legend-item"><div class="legend-color" style="background: #00f2fe;"></div> Active Link</div>
+        <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div> Failed Link</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Status & Failure Controls -->
+  <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+    <div class="glass-panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>💥</span> Disaster Link Controls</div>
+      </div>
+      <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 1rem;">
+        Click below to simulate severed communication cables or destroyed towers:
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+        <button id="btnFailLink1" class="btn-danger" style="display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 0.75rem 1rem;">
+          <span>💥 POL ↔ ECC (Command Link)</span>
+          <span id="badgeLink1" class="tag-badge" style="background: rgba(16,185,129,0.2); color: #34d399;">ACTIVE</span>
+        </button>
+        <button id="btnFailLink2" class="btn-danger" style="display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 0.75rem 1rem;">
+          <span>💥 POL ↔ R1 (North Relay)</span>
+          <span id="badgeLink2" class="tag-badge" style="background: rgba(16,185,129,0.2); color: #34d399;">ACTIVE</span>
+        </button>
+        <button id="btnFailLink3" class="btn-danger" style="display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 0.75rem 1rem;">
+          <span>💥 FIRE ↔ R2 (East Relay)</span>
+          <span id="badgeLink3" class="tag-badge" style="background: rgba(16,185,129,0.2); color: #34d399;">ACTIVE</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Node Summary -->
+    <div class="glass-panel" style="flex: 1;">
+      <div class="panel-header">
+        <div class="panel-title"><span>📋</span> Network Node Directory</div>
+      </div>
+      <div id="nodeDirectoryList" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto;">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/routing.js') }}"></script>
+{% endblock %}

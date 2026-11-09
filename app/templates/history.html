@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Simulation History – ResQNet NOC{% endblock %}
+
+{% block content %}
+<!-- ============================================================ -->
+<!-- PAGE HEADER                                                    -->
+<!-- ============================================================ -->
+<div class="page-header" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+  <div>
+    <h1 style="font-size:1.6rem;color:#ffffff;display:flex;align-items:center;gap:0.6rem;margin:0;">
+      <span class="fas fa-history" style="color:#00f2fe;"></span>
+      Simulation History &amp; Audit Trail
+    </h1>
+    <p style="color:#94a3b8;font-size:0.85rem;margin-top:0.25rem;">
+      Persistent record of all ResQNet simulation runs — routing, error recovery, congestion, and traffic analysis.
+    </p>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+    <button id="btn-refresh-history" class="btn btn-secondary" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 0.9rem;font-size:0.82rem;">
+      <i class="fas fa-sync-alt"></i> Refresh
+    </button>
+    <a href="/api/history/export" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 1rem;font-size:0.82rem;font-weight:600;" id="btn-export-csv">
+      <i class="fas fa-file-csv"></i> Export CSV
+    </a>
+    <button id="btn-clear-history" class="btn" style="background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.4);display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 0.9rem;font-size:0.82rem;">
+      <i class="fas fa-trash-alt"></i> Clear All
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY KPI CARDS                                             -->
+<!-- ============================================================ -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem;margin-bottom:1.5rem;">
+  <div class="card glass-panel" style="padding:0.9rem;border:1px solid rgba(64,93,148,0.3);">
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;">Total Simulations</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:0.25rem;">
+      <strong id="hist-total" style="font-size:1.45rem;color:#ffffff;font-family:'JetBrains Mono',monospace;">–</strong>
+      <span style="font-size:0.75rem;color:#94a3b8;">runs</span>
+    </div>
+  </div>
+  <div class="card glass-panel" style="padding:0.9rem;border:1px solid rgba(64,93,148,0.3);">
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;">Successful</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:0.25rem;">
+      <strong id="hist-success" style="font-size:1.45rem;color:#34d399;font-family:'JetBrains Mono',monospace;">–</strong>
+      <span style="font-size:0.75rem;color:#94a3b8;">runs</span>
+    </div>
+  </div>
+  <div class="card glass-panel" style="padding:0.9rem;border:1px solid rgba(64,93,148,0.3);">
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;">With Loss / Failed</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:0.25rem;">
+      <strong id="hist-failed" style="font-size:1.45rem;color:#f87171;font-family:'JetBrains Mono',monospace;">–</strong>
+      <span style="font-size:0.75rem;color:#94a3b8;">runs</span>
+    </div>
+  </div>
+  <div class="card glass-panel" style="padding:0.9rem;border:1px solid rgba(64,93,148,0.3);">
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;">Total Packets</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:0.25rem;">
+      <strong id="hist-total-pkts" style="font-size:1.45rem;color:#00f2fe;font-family:'JetBrains Mono',monospace;">–</strong>
+      <span style="font-size:0.75rem;color:#94a3b8;">pkts</span>
+    </div>
+  </div>
+  <div class="card glass-panel" style="padding:0.9rem;border:1px solid rgba(64,93,148,0.3);">
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;">Avg Delivery Ratio</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:0.25rem;">
+      <strong id="hist-avg-pdr" style="font-size:1.45rem;color:#34d399;font-family:'JetBrains Mono',monospace;">–</strong>
+      <span style="font-size:0.75rem;color:#94a3b8;">%</span>
+    </div>
+  </div>
+  <div class="card glass-panel" style="padding:0.9rem;border:1px solid rgba(64,93,148,0.3);">
+    <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;">Avg Throughput</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:0.25rem;">
+      <strong id="hist-avg-tput" style="font-size:1.45rem;color:#38bdf8;font-family:'JetBrains Mono',monospace;">–</strong>
+      <span style="font-size:0.75rem;color:#94a3b8;">kbps</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SEARCH & FILTER BAR                                           -->
+<!-- ============================================================ -->
+<div class="glass-panel" style="padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;flex-wrap:wrap;gap:0.75rem;align-items:flex-end;">
+  <!-- Search text -->
+  <div style="flex:1;min-width:200px;">
+    <label style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">Search</label>
+    <input id="hist-search-input" type="text" placeholder="Search by ID, algorithm..." 
+      style="width:100%;background:#060913;border:1px solid rgba(64,93,148,0.4);border-radius:6px;color:#e2e8f0;padding:0.4rem 0.75rem;font-size:0.82rem;font-family:'JetBrains Mono',monospace;outline:none;">
+  </div>
+  <!-- Algorithm filter -->
+  <div style="min-width:200px;">
+    <label style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">Algorithm</label>
+    <select id="hist-filter-algo" style="background:#060913;border:1px solid rgba(64,93,148,0.4);border-radius:6px;color:#e2e8f0;padding:0.4rem 0.75rem;font-size:0.82rem;width:100%;">
+      <option value="">All Algorithms</option>
+      <option value="Emergency Traffic Engine">Emergency Traffic Engine</option>
+      <option value="Dijkstra Routing">Dijkstra Routing</option>
+      <option value="Distance Vector Routing">Distance Vector Routing</option>
+      <option value="Go-Back-N ARQ">Go-Back-N ARQ</option>
+      <option value="Leaky Bucket Congestion">Leaky Bucket Congestion</option>
+      <option value="CRC Error Detection">CRC Error Detection</option>
+    </select>
+  </div>
+  <!-- Status filter -->
+  <div style="min-width:160px;">
+    <label style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">Status</label>
+    <select id="hist-filter-status" style="background:#060913;border:1px solid rgba(64,93,148,0.4);border-radius:6px;color:#e2e8f0;padding:0.4rem 0.75rem;font-size:0.82rem;width:100%;">
+      <option value="">All Statuses</option>
+      <option value="SUCCESS">SUCCESS</option>
+      <option value="COMPLETED_WITH_LOSS">COMPLETED WITH LOSS</option>
+      <option value="FAILED">FAILED</option>
+    </select>
+  </div>
+  <!-- Sort -->
+  <div style="min-width:140px;">
+    <label style="font-size:0.75rem;color:#94a3b8;display:block;margin-bottom:0.3rem;">Sort</label>
+    <select id="hist-sort" style="background:#060913;border:1px solid rgba(64,93,148,0.4);border-radius:6px;color:#e2e8f0;padding:0.4rem 0.75rem;font-size:0.82rem;width:100%;">
+      <option value="newest">Newest First</option>
+      <option value="oldest">Oldest First</option>
+    </select>
+  </div>
+  <!-- Search button -->
+  <div>
+    <button id="btn-search-history" class="btn btn-primary" style="padding:0.45rem 1rem;font-size:0.82rem;display:inline-flex;align-items:center;gap:0.4rem;">
+      <i class="fas fa-search"></i> Search
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- HISTORY TABLE                                                 -->
+<!-- ============================================================ -->
+<div class="glass-panel" style="padding:1.25rem;margin-bottom:1.5rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+    <h2 style="font-size:1.05rem;color:#ffffff;display:flex;align-items:center;gap:0.5rem;margin:0;">
+      <span class="fas fa-table" style="color:#00f2fe;"></span>
+      Simulation Records
+    </h2>
+    <span id="hist-record-count" style="font-size:0.8rem;color:#94a3b8;font-family:'JetBrains Mono',monospace;">Loading...</span>
+  </div>
+
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#cbd5e1;">
+      <thead>
+        <tr style="background:rgba(15,23,42,0.9);border-bottom:1px solid rgba(64,93,148,0.35);color:#94a3b8;text-align:left;">
+          <th style="padding:0.6rem 0.75rem;white-space:nowrap;">Simulation ID</th>
+          <th style="padding:0.6rem 0.75rem;white-space:nowrap;">Date &amp; Time</th>
+          <th style="padding:0.6rem 0.75rem;">Algorithm</th>
+          <th style="padding:0.6rem 0.75rem;text-align:right;">Sent</th>
+          <th style="padding:0.6rem 0.75rem;text-align:right;color:#34d399;">Delivered</th>
+          <th style="padding:0.6rem 0.75rem;text-align:right;color:#f87171;">Lost</th>
+          <th style="padding:0.6rem 0.75rem;text-align:right;">PDR</th>
+          <th style="padding:0.6rem 0.75rem;text-align:right;">Avg Delay</th>
+          <th style="padding:0.6rem 0.75rem;text-align:right;">Throughput</th>
+          <th style="padding:0.6rem 0.75rem;">Status</th>
+          <th style="padding:0.6rem 0.75rem;text-align:center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="history-table-body">
+        <tr>
+          <td colspan="11" style="text-align:center;padding:2rem;color:#94a3b8;">
+            <i class="fas fa-spinner fa-spin" style="margin-right:0.5rem;"></i> Loading simulation history…
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DETAIL MODAL                                                  -->
+<!-- ============================================================ -->
+<div id="hist-detail-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(6,9,19,0.85);backdrop-filter:blur(4px);overflow-y:auto;padding:2rem 1rem;">
+  <div style="max-width:720px;margin:0 auto;background:#0f172a;border:1px solid rgba(64,93,148,0.4);border-radius:12px;overflow:hidden;">
+    <!-- Modal header -->
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid rgba(64,93,148,0.3);display:flex;justify-content:space-between;align-items:center;background:rgba(15,23,42,0.9);">
+      <h3 style="color:#00f2fe;margin:0;font-size:1rem;display:flex;align-items:center;gap:0.5rem;">
+        <i class="fas fa-info-circle"></i>
+        Simulation Detail
+      </h3>
+      <button id="hist-modal-close" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.2rem;padding:0.2rem 0.5rem;" aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <!-- Modal body -->
+    <div style="padding:1.25rem;" id="hist-detail-body">
+      <!-- Filled by history.js -->
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/history.js') }}"></script>
+{% endblock %}

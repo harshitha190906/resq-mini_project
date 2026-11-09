@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% block title %}Congestion Control Lab — Leaky Bucket Traffic Shaper{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.6rem; color: #ffffff; display: flex; align-items: center; gap: 0.6rem; margin: 0; font-family: var(--font-heading, sans-serif);">
+      <span class="fas fa-traffic-light" style="color: var(--accent-cyan, #00f2fe);"></span>
+      Congestion Control — Leaky Bucket Lab
+    </h1>
+    <p style="color: var(--text-muted, #94a3b8); font-size: 0.85rem; margin-top: 0.25rem;">
+      Traffic shaping laboratory: queue burst buffering, buffer overflow drop dynamics, and fixed-rate packet egress regulation.
+    </p>
+  </div>
+  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+    <div id="congestion-status-badge" class="status-badge">
+      <span class="status-dot" style="background: #00f2fe;"></span>
+      <span id="congestion-status-text">LEAKY BUCKET READY</span>
+    </div>
+    <div id="congestion-tick-badge" class="tag-badge" style="background: rgba(0, 242, 254, 0.12); color: #00f2fe; padding: 0.4rem 0.8rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+      <i class="fas fa-clock"></i> Tick: <span id="disp-tick-num">0</span> / <span id="disp-total-ticks">8</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 1: Configuration Panel & Presets -->
+<div class="glass-panel" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+  <div class="panel-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+    <h2 style="font-size: 1.05rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+      <span class="fas fa-sliders-h" style="color: var(--accent-cyan, #00f2fe);"></span>
+      1. Leaky Bucket Configuration &amp; Traffic Presets
+    </h2>
+    <!-- Presets -->
+    <div style="display: flex; gap: 0.4rem; font-size: 0.76rem;">
+      <button id="preset-surge" class="btn btn-secondary" style="padding: 0.25rem 0.65rem;">Disaster Surge Burst</button>
+      <button id="preset-steady" class="btn btn-secondary" style="padding: 0.25rem 0.65rem;">Steady Low Traffic</button>
+      <button id="preset-overflow" class="btn btn-secondary" style="padding: 0.25rem 0.65rem;">Extreme Overflow</button>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+    <div>
+      <label for="bucket_capacity" style="display: block; font-size: 0.78rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.35rem;">
+        Bucket Capacity (<span style="color:#fbbf24;">Packets</span>):
+      </label>
+      <input type="number" id="bucket_capacity" value="15" min="1" max="100" class="form-input" style="width: 100%; background: #0b1120; border: 1px solid #334155; color: #ffffff; padding: 0.45rem 0.65rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace;" />
+    </div>
+
+    <div>
+      <label for="leak_rate" style="display: block; font-size: 0.78rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.35rem;">
+        Leak Rate (<span style="color:#10b981;">Packets/Tick</span>):
+      </label>
+      <input type="number" id="leak_rate" value="4" min="1" max="50" class="form-input" style="width: 100%; background: #0b1120; border: 1px solid #334155; color: #ffffff; padding: 0.45rem 0.65rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace;" />
+    </div>
+
+    <div style="grid-column: span 2;">
+      <label for="incoming_packets" style="display: block; font-size: 0.78rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.35rem;">
+        Incoming Packet Sequence (<span style="color:#00f2fe;">Comma-separated per tick</span>):
+      </label>
+      <input type="text" id="incoming_packets" value="12, 2, 14, 0, 8, 16, 2, 0" class="form-input" style="width: 100%; background: #0b1120; border: 1px solid #334155; color: #00f2fe; padding: 0.45rem 0.65rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace;" />
+    </div>
+
+    <div>
+      <label for="sim_speed" style="display: block; font-size: 0.78rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.35rem;">
+        Animation Speed:
+      </label>
+      <select id="sim_speed" class="form-input" style="width: 100%; background: #0b1120; border: 1px solid #334155; color: #ffffff; padding: 0.45rem 0.65rem; border-radius: 6px;">
+        <option value="1200">Slow (1.2s / tick)</option>
+        <option value="750" selected>Normal (750ms / tick)</option>
+        <option value="400">Fast (400ms / tick)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Action Control Bar -->
+  <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: center; border-top: 1px solid rgba(64,93,148,0.25); padding-top: 1rem;">
+    <button id="btn-init" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; font-weight: 600;">
+      <i class="fas fa-play"></i> Start Simulation
+    </button>
+    <button id="btn-play" class="btn btn-success" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; font-weight: 600; background: #059669; border-color: #10b981;">
+      <i class="fas fa-play"></i> Auto Play
+    </button>
+    <button id="btn-pause" class="btn btn-warning" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; font-weight: 600; background: #d97706; border-color: #f59e0b;" disabled>
+      <i class="fas fa-pause"></i> Pause
+    </button>
+    <button id="btn-step" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; font-weight: 600;">
+      <i class="fas fa-step-forward"></i> Step Forward
+    </button>
+    <button id="btn-reset" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1rem; border: 1px solid #475569; color: #cbd5e1; background: transparent;">
+      <i class="fas fa-undo"></i> Reset
+    </button>
+
+    <div id="commentary-banner" style="margin-left: auto; font-size: 0.82rem; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; background: rgba(15,23,42,0.85); padding: 0.4rem 0.8rem; border-radius: 6px; border-left: 3px solid #00f2fe;">
+      <span id="commentary-text">Configure parameters and click "Start Simulation".</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: Animated Leaky Bucket Diagram -->
+<div class="glass-panel" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+  <div class="panel-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2 style="font-size: 1.05rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <span class="fas fa-fill-drip" style="color: var(--accent-cyan, #00f2fe);"></span>
+        2. Animated Leaky Bucket Diagram
+      </h2>
+      <p style="font-size: 0.78rem; color: #94a3b8; margin-top: 0.2rem;">
+        INCOMING PACKETS (Cyan) &rarr; LEAKY BUCKET BUFFER (Orange) &rarr; TRANSMITTED OUTPUT (Green) | OVERFLOW DROPS (Red)
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.6rem; font-size: 0.76rem; font-family: 'JetBrains Mono', monospace;">
+      <span class="tag-badge" style="background: rgba(0, 242, 254, 0.15); color: #00f2fe;"><i class="fas fa-arrow-down"></i> INCOMING</span>
+      <span class="tag-badge" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24;"><i class="fas fa-box"></i> QUEUED</span>
+      <span class="tag-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;"><i class="fas fa-check"></i> TRANSMITTED</span>
+      <span class="tag-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171;"><i class="fas fa-times"></i> DROPPED</span>
+    </div>
+  </div>
+
+  <div style="background: #060913; border: 1px solid rgba(64,93,148,0.35); border-radius: 10px; padding: 1.5rem; display: flex; flex-direction: column; align-items: center; position: relative; min-height: 380px;">
+    
+    <!-- Top: Incoming Stream -->
+    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 0.5rem; z-index: 2;">
+      <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 0.25rem;">
+        INCOMING PACKET BURST (Tick <span id="diag-tick">0</span>)
+      </div>
+      <div id="incoming-packet-pill" style="background: rgba(0,242,254,0.18); border: 1.5px solid #00f2fe; color: #00f2fe; padding: 0.35rem 1rem; border-radius: 20px; font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; box-shadow: 0 0 12px rgba(0,242,254,0.35); display: flex; align-items: center; gap: 0.5rem; transition: transform 0.3s ease;">
+        <i class="fas fa-arrow-down"></i> <span id="diag-incoming-count">+0 pkts</span>
+      </div>
+    </div>
+
+    <!-- Center: The Leaky Bucket Graphic Container -->
+    <div style="position: relative; width: 320px; height: 210px; display: flex; justify-content: center; align-items: flex-end; margin: 0.5rem 0;">
+      
+      <!-- Bucket Physical Vessel Frame -->
+      <div id="bucket-vessel" style="width: 200px; height: 190px; border-left: 3px solid #64748b; border-right: 3px solid #64748b; border-bottom: 3px solid #64748b; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; position: relative; background: rgba(15,23,42,0.6); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;">
+        
+        <!-- Animated Queue Water / Liquid Level -->
+        <div id="bucket-fill-level" style="width: 100%; height: 0%; background: linear-gradient(180deg, #f97316 0%, #d97706 100%); transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1); position: relative; opacity: 0.85;">
+          <!-- Top Surface Glow Line -->
+          <div style="height: 3px; background: #fbbf24; box-shadow: 0 0 8px #fbbf24;"></div>
+        </div>
+
+        <!-- Center Text: Queue Occupancy -->
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3; pointer-events: none;">
+          <strong id="diag-queue-text" style="font-size: 1.4rem; color: #ffffff; font-family: 'JetBrains Mono', monospace; text-shadow: 0 2px 6px rgba(0,0,0,0.8);">0 / 15</strong>
+          <span id="diag-queue-pct" style="font-size: 0.75rem; color: #f1f5f9; text-shadow: 0 1px 4px rgba(0,0,0,0.8); font-family: 'JetBrains Mono', monospace;">0.0% FULL</span>
+        </div>
+      </div>
+
+      <!-- Capacity Marker Line on Left -->
+      <div style="position: absolute; left: 15px; top: 20px; display: flex; align-items: center; gap: 0.35rem; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #94a3b8;">
+        <span>Max Capacity:</span>
+        <strong id="diag-cap-text" style="color: #fbbf24;">15</strong>
+        <div style="width: 25px; height: 1px; background: #64748b;"></div>
+      </div>
+
+      <!-- Overflow Spout on Right -->
+      <div id="overflow-spout" style="position: absolute; right: 10px; top: 15px; width: 85px; text-align: center;">
+        <div id="overflow-pill" style="background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #f87171; border-radius: 6px; padding: 0.3rem 0.4rem; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; opacity: 0; transition: opacity 0.3s ease;">
+          <i class="fas fa-exclamation-triangle"></i> DROPPED<br /><span id="diag-dropped-count">0 pkts</span>
+        </div>
+      </div>
+
+      <!-- Bottom Leak Nozzle -->
+      <div style="position: absolute; bottom: -12px; width: 28px; height: 14px; background: #475569; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px;"></div>
+    </div>
+
+    <!-- Bottom: Outgoing Stream -->
+    <div style="display: flex; flex-direction: column; align-items: center; margin-top: 0.5rem; z-index: 2;">
+      <div id="transmitted-packet-pill" style="background: rgba(16,185,129,0.18); border: 1.5px solid #10b981; color: #34d399; padding: 0.35rem 1rem; border-radius: 20px; font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; box-shadow: 0 0 12px rgba(16,185,129,0.35); display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fas fa-arrow-down"></i> <span id="diag-transmitted-count">Leaked: 0 pkts</span>
+      </div>
+      <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-top: 0.25rem;">
+        SMOOTHED OUTPUT AT FIXED LEAK RATE (<span id="diag-rate-text" style="color: #34d399;">4 pkts/tick</span>)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: Congestion Performance Metrics Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+  <div class="card glass-panel" style="padding: 0.85rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.74rem; color: #94a3b8; text-transform: uppercase;">Total Incoming</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="val-total-incoming" style="font-size: 1.4rem; color: #00f2fe; font-family: 'JetBrains Mono', monospace;">0</strong>
+      <span style="font-size: 0.78rem; color: #94a3b8;">pkts</span>
+    </div>
+  </div>
+
+  <div class="card glass-panel" style="padding: 0.85rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.74rem; color: #94a3b8; text-transform: uppercase;">Total Transmitted</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="val-total-transmitted" style="font-size: 1.4rem; color: #34d399; font-family: 'JetBrains Mono', monospace;">0</strong>
+      <span style="font-size: 0.78rem; color: #94a3b8;">leaked</span>
+    </div>
+  </div>
+
+  <div class="card glass-panel" style="padding: 0.85rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.74rem; color: #94a3b8; text-transform: uppercase;">Dropped (Overflow)</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="val-total-dropped" style="font-size: 1.4rem; color: #f87171; font-family: 'JetBrains Mono', monospace;">0</strong>
+      <span style="font-size: 0.78rem; color: #94a3b8;">pkts</span>
+    </div>
+  </div>
+
+  <div class="card glass-panel" style="padding: 0.85rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.74rem; color: #94a3b8; text-transform: uppercase;">Remaining Queue</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="val-remaining-queue" style="font-size: 1.4rem; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">0</strong>
+      <span style="font-size: 0.78rem; color: #94a3b8;">buffered</span>
+    </div>
+  </div>
+
+  <div class="card glass-panel" style="padding: 0.85rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.74rem; color: #94a3b8; text-transform: uppercase;">Packet Loss Ratio</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="val-loss-pct" style="font-size: 1.4rem; color: #f87171; font-family: 'JetBrains Mono', monospace;">0.0%</strong>
+      <span style="font-size: 0.78rem; color: #94a3b8;">ratio</span>
+    </div>
+  </div>
+
+  <div class="card glass-panel" style="padding: 0.85rem; border: 1px solid rgba(64,93,148,0.3);">
+    <div style="font-size: 0.74rem; color: #94a3b8; text-transform: uppercase;">Regulation Efficiency</div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.25rem;">
+      <strong id="val-eff-pct" style="font-size: 1.4rem; color: #34d399; font-family: 'JetBrains Mono', monospace;">100.0%</strong>
+      <span style="font-size: 0.78rem; color: #94a3b8;">yield</span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: Live Traffic Shaping Curve & Educational Insights -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+  <!-- Chart: Incoming vs Leaked vs Queue -->
+  <div class="glass-panel" style="padding: 1.25rem;">
+    <div class="panel-header" style="margin-bottom: 0.75rem;">
+      <h3 style="font-size: 0.95rem; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fas fa-chart-area" style="color: #00f2fe;"></i> Traffic Shaping &amp; Smoothing Curve
+      </h3>
+    </div>
+    <div style="height: 220px; width: 100%; position: relative;">
+      <canvas id="leakyBucketChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Educational Concept Card -->
+  <div class="glass-panel" style="padding: 1.25rem;">
+    <div class="panel-header" style="margin-bottom: 0.75rem;">
+      <h3 style="font-size: 0.95rem; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fas fa-lightbulb" style="color: #fbbf24;"></i> How Leaky Bucket Controls Congestion
+      </h3>
+    </div>
+    <div style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
+      <p style="margin-bottom: 0.5rem;">
+        <strong>1. Burst Smoothing:</strong> In emergency situations, telemetry packets arrive in intense, unpredictable bursts (e.g. disaster triage flares). The Leaky Bucket buffers these spikes, converting irregular arrivals into a steady, constant-rate stream.
+      </p>
+      <p style="margin-bottom: 0.5rem;">
+        <strong>2. Downstream Protection:</strong> By leaking at a fixed rate ($\le$ bottleneck link bandwidth), subsequent microwave relays and routers are guaranteed never to experience queue overflow.
+      </p>
+      <p style="margin: 0;">
+        <strong>3. Controlled Overflow:</strong> If arrivals exceed capacity ($\text{Queue} + \text{Arriving} > \text{Capacity}$), excess packets are discarded immediately at the edge rather than congesting transit channels.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: Tick-by-Tick Simulation Table -->
+<div class="glass-panel" style="padding: 1.25rem;">
+  <div class="panel-header" style="margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2 style="font-size: 1.05rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <span class="fas fa-table" style="color: var(--accent-cyan, #00f2fe);"></span>
+        3. Tick-by-Tick Leaky Bucket Progression Log
+      </h2>
+      <p style="font-size: 0.78rem; color: #94a3b8; margin-top: 0.2rem;">
+        Complete breakdown of incoming, admitted, transmitted, dropped, and residual queue states for every tick.
+      </p>
+    </div>
+  </div>
+
+  <div style="background: #060913; border: 1px solid rgba(64,93,148,0.35); border-radius: 8px; max-height: 280px; overflow-y: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: #cbd5e1;">
+      <thead>
+        <tr style="background: rgba(15,23,42,0.9); border-bottom: 1px solid rgba(64,93,148,0.35); color: #94a3b8; text-align: left;">
+          <th style="padding: 0.55rem 0.75rem;">Tick</th>
+          <th style="padding: 0.55rem 0.75rem; color: #00f2fe;">Incoming</th>
+          <th style="padding: 0.55rem 0.75rem; color: #34d399;">Transmitted</th>
+          <th style="padding: 0.55rem 0.75rem; color: #f87171;">Dropped</th>
+          <th style="padding: 0.55rem 0.75rem;">Queue Before</th>
+          <th style="padding: 0.55rem 0.75rem; color: #fbbf24;">Queue After</th>
+          <th style="padding: 0.55rem 0.75rem;">Event Description</th>
+        </tr>
+      </thead>
+      <tbody id="congestion-table-tbody">
+        <!-- Rendered by congestion.js -->
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/congestion.js') }}"></script>
+{% endblock %}

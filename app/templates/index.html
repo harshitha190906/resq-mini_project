@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ResQNet — Reliable Emergency Communication Network simulation platform." />
+  <title>ResQNet — Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">⚡ ResQNet</div>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/about">About</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Emergency Network Simulator</h1>
+    <p class="subtitle">Simulate and analyse communication reliability under congested conditions.</p>
+
+    <section class="card" id="sim-panel">
+      <h2>Run a Simulation</h2>
+      <label for="node-count">Number of Nodes</label>
+      <input type="range" id="node-count" min="5" max="50" value="10" />
+      <span id="node-display">10</span>
+
+      <label for="congestion-level">Congestion Level</label>
+      <input type="range" id="congestion-level" min="0" max="100" value="50" />
+      <span id="congestion-display">50%</span>
+
+      <button id="run-btn" class="btn btn-primary" onclick="runSimulation()">▶ Run Simulation</button>
+      <p id="sim-status" class="status-msg"></p>
+    </section>
+
+    <section class="card" id="chart-panel" style="display:none;">
+      <h2>Results</h2>
+      <canvas id="resultsChart" width="600" height="300"></canvas>
+    </section>
+  </main>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Network Operations Center — ResQNet Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.6rem; color: #ffffff; display: flex; align-items: center; gap: 0.6rem; font-family: var(--font-heading, sans-serif);">
+      <span class="fas fa-satellite-dish" style="color: var(--accent-cyan, #00f2fe);"></span>
+      Network Operations Center (NOC)
+    </h1>
+    <p style="color: var(--text-muted, #94a3b8); font-size: 0.85rem; margin-top: 0.2rem;">
+      Real-time disaster telemetry, active routing topology, and packet transmission performance analytics.
+    </p>
+  </div>
+  <div style="display: flex; align-items: center; gap: 0.75rem;">
+    <div id="sim-status-badge" class="status-badge">
+      <span class="status-dot"></span>
+      <span id="sim-status-text">SYSTEM ONLINE — READY</span>
+    </div>
+  </div>
+</div>
+
+<!-- Overview Metric Cards -->
+<div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+  <!-- Card 1: Network Overview -->
+  <div class="card glass-panel" id="card-overview">
+    <div class="panel-header" style="margin-bottom: 0.85rem;">
+      <h2 style="font-size: 1.05rem; color: var(--accent-cyan, #00f2fe); display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <span class="fas fa-network-wired"></span> Network Overview
+      </h2>
+      <span class="tag-badge" style="background: rgba(0, 242, 254, 0.15); color: #00f2fe;">LIVE</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+      <p id="total-nodes" style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted, #94a3b8);">
+        <span>Total Nodes:</span> <strong id="val-total-nodes" style="color: #ffffff; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+      <p id="active-links" style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted, #94a3b8);">
+        <span>Active Links:</span> <strong id="val-active-links" style="color: #34d399; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+      <p id="failed-links" style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted, #94a3b8);">
+        <span>Failed Links:</span> <strong id="val-failed-links" style="color: #f87171; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- Card 2: Message Statistics -->
+  <div class="card glass-panel" id="card-messages">
+    <div class="panel-header" style="margin-bottom: 0.85rem;">
+      <h2 style="font-size: 1.05rem; color: var(--accent-blue, #4facfe); display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <span class="fas fa-envelope-open-text"></span> Message Statistics
+      </h2>
+      <span id="badge-msg-status" class="tag-badge" style="background: rgba(79, 172, 254, 0.15); color: #4facfe;">STANDBY</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <p id="packets-generated" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+        <span>Packets Generated:</span> <strong id="val-packets-generated" style="color: #ffffff; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+      <p id="packets-delivered" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+        <span>Packets Delivered:</span> <strong id="val-packets-delivered" style="color: #34d399; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+      <p id="packets-lost" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+        <span>Packets Lost:</span> <strong id="val-packets-lost" style="color: #f87171; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+      <p id="retransmissions" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+        <span>Retransmissions:</span> <strong id="val-retransmissions" style="color: #fbbf24; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- Card 3: Performance Metrics -->
+  <div class="card glass-panel" id="card-performance">
+    <div class="panel-header" style="margin-bottom: 0.85rem;">
+      <h2 style="font-size: 1.05rem; color: var(--accent-emerald, #10b981); display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <span class="fas fa-tachometer-alt"></span> Performance Metrics
+      </h2>
+      <span id="badge-perf-status" class="tag-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">IDLE</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <p id="delivery-ratio" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+        <span>Delivery Ratio:</span> <strong id="val-delivery-ratio" style="color: #34d399; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+      <p id="loss-ratio" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+        <span>Loss Ratio:</span> <strong id="val-loss-ratio" style="color: #f87171; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+      <p id="avg-delay" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+        <span>Avg. Delay (ms):</span> <strong id="val-avg-delay" style="color: #fbbf24; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+      <p id="throughput" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+        <span>Throughput (kbps):</span> <strong id="val-throughput" style="color: #00f2fe; font-family: 'JetBrains Mono', monospace;">–</strong>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Network Topology Preview -->
+<div class="glass-panel" style="margin-top: 1.5rem; padding: 1.25rem;">
+  <div class="panel-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2 style="font-size: 1.15rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <span class="fas fa-project-diagram" style="color: var(--accent-cyan, #00f2fe);"></span>
+        Disaster Communication Network Topology Preview
+      </h2>
+      <p style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); margin-top: 0.2rem;">
+        Complete graph showing command center, emergency responders, relays and civilian shelters.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <a href="{{ url_for('main.topology') }}" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem;">
+        <span class="fas fa-expand-arrows-alt"></span> Interactive Explorer
+      </a>
+    </div>
+  </div>
+  <div id="network-preview" style="height: 380px; width: 100%; border: 1px solid var(--border-color, rgba(64,93,148,0.35)); border-radius: 10px; background: #060913; position: relative; overflow: hidden;">
+    <!-- SVG rendered dynamically by dashboard.js -->
+  </div>
+</div>
+
+<!-- Performance Evaluation Charts Section -->
+<div style="margin-top: 1.5rem;">
+  <div class="panel-header" style="margin-bottom: 1rem;">
+    <h2 style="font-size: 1.15rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+      <span class="fas fa-chart-line" style="color: var(--accent-cyan, #00f2fe);"></span>
+      Performance Analytics &amp; Load Curves
+    </h2>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.25rem;">
+    <!-- Chart 1: Packet Delivery Over Time -->
+    <div class="card glass-panel" style="padding: 1.25rem; position: relative;">
+      <h3 style="font-size: 0.95rem; color: var(--text-main, #f1f5f9); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fas fa-check-circle" style="color: #34d399;"></i> Packet Delivery Over Time</span>
+        <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8); font-weight: normal;">Cumulative packets delivered</span>
+      </h3>
+      <div style="position: relative; height: 220px; width: 100%;">
+        <canvas id="deliveryChart"></canvas>
+        <div id="deliveryChart-empty" class="chart-empty-placeholder" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(8,12,22,0.85); border-radius: 8px; text-align: center; padding: 1rem;">
+          <span class="fas fa-chart-area" style="font-size: 2rem; color: #475569; margin-bottom: 0.5rem;"></span>
+          <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">Run a simulation to generate performance data</span>
+          <span style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">Click "Start Simulation" below to execute traffic.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 2: Packet Loss Over Time -->
+    <div class="card glass-panel" style="padding: 1.25rem; position: relative;">
+      <h3 style="font-size: 0.95rem; color: var(--text-main, #f1f5f9); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fas fa-times-circle" style="color: #f87171;"></i> Packet Loss Over Time</span>
+        <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8); font-weight: normal;">Dropped packets &amp; congestion</span>
+      </h3>
+      <div style="position: relative; height: 220px; width: 100%;">
+        <canvas id="lossChart"></canvas>
+        <div id="lossChart-empty" class="chart-empty-placeholder" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(8,12,22,0.85); border-radius: 8px; text-align: center; padding: 1rem;">
+          <span class="fas fa-exclamation-circle" style="font-size: 2rem; color: #475569; margin-bottom: 0.5rem;"></span>
+          <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">Run a simulation to generate performance data</span>
+          <span style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">Loss measurements will appear here.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 3: Delay & Throughput -->
+    <div class="card glass-panel" style="padding: 1.25rem; position: relative; grid-column: 1 / -1;">
+      <h3 style="font-size: 0.95rem; color: var(--text-main, #f1f5f9); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fas fa-wave-square" style="color: var(--accent-cyan, #00f2fe);"></i> End-to-End Latency (ms) &amp; Throughput (kbps)</span>
+        <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8); font-weight: normal;">Dual-axis performance telemetry</span>
+      </h3>
+      <div style="position: relative; height: 240px; width: 100%;">
+        <canvas id="delayThroughputChart"></canvas>
+        <div id="delayThroughputChart-empty" class="chart-empty-placeholder" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(8,12,22,0.85); border-radius: 8px; text-align: center; padding: 1rem;">
+          <span class="fas fa-chart-bar" style="font-size: 2rem; color: #475569; margin-bottom: 0.5rem;"></span>
+          <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">Run a simulation to generate performance data</span>
+          <span style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">Latency and throughput metrics will plot automatically.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Simulation Execution & Control Bar -->
+<div class="glass-panel" style="margin-top: 1.5rem; padding: 1.25rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h3 style="font-size: 1rem; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        <span class="fas fa-play-circle" style="color: var(--accent-cyan, #00f2fe);"></span>
+        Disaster Simulation Engine Controls
+      </h3>
+      <p id="sim-control-desc" style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); margin-top: 0.2rem;">
+        Transmit a deterministic emergency communication batch across the current topology to evaluate routing and reliability.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+      <button id="start-sim" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.4rem; font-weight: 700;">
+        <span class="fas fa-play"></span> Start Simulation
+      </button>
+      <button id="reset-sim" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.2rem;">
+        <span class="fas fa-undo"></span> Reset Simulation
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
